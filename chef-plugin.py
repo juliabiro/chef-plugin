@@ -10,24 +10,19 @@ class FindRecipeCommand(sublime_plugin.TextCommand):
 		for s in sels:
 			if self._is_recipe(s):
 				if self._is_included_recipe(s):
-					filename = self._find_recipe_path(self._get_full_recipe_name2(s)) 
+					filename = self._find_recipe_path(self._get_recipe_name(s, delim1='\"', delim2='\"')) 
+					print (filename)
 				else:
-					filename = self._find_recipe_path(self._get_full_recipe_name(s))
+					filename = self._find_recipe_path(self._get_recipe_name(s))
 			elif self._is_role(s):
-				filename = self._find_role_path(self._get_full_recipe_name(s))
+				filename = self._find_role_path(self._get_recipe_name(s))
 		
 		self.view.window().open_file(filename, sublime.ENCODED_POSITION)
 		
-	def _get_full_recipe_name(self, selection):
+	def _get_recipe_name(self, selection, delim1='\[', delim2='\]'):
 		line = self.view.line(selection)
-		open = self.view.find('\[', line.begin())
-		close = self.view.find('\]', line.begin())
-		return self.view.substr(sublime.Region(open.begin()+1,close.end()-1))
-
-	def _get_full_recipe_name2(self, selection):
-		line = self.view.line(selection)
-		open = self.view.find('\"', line.begin())
-		close = self.view.find('\"', open.begin()+1)
+		open = self.view.find(delim1, line.begin())
+		close = self.view.find(delim2, open.begin()+1)
 		return self.view.substr(sublime.Region(open.begin()+1,close.end()-1))
 
 	def _is_recipe(self, selection):
