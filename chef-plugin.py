@@ -11,7 +11,10 @@ class FindRecipeCommand(sublime_plugin.TextCommand):
 		sels=self.view.sel()
 		for s in sels:
 			if self._is_recipe(s):
-				filename = self._find_recipe_path(self._get_full_recipe_name(s))
+				if self._is_included_recipe:
+					filename = self._find_recipe_path(self._get_full_recipe_name2(s)) 
+				else:
+					filename = self._find_recipe_path(self._get_full_recipe_name(s))
 			elif self._is_role(s):
 				filename = self._find_role_path(self._get_full_recipe_name(s))
 		
@@ -23,9 +26,19 @@ class FindRecipeCommand(sublime_plugin.TextCommand):
 		close = self.view.find('\]', line.begin())
 		return self.view.substr(sublime.Region(open.begin()+1,close.end()-1))
 
+	def _get_full_recipe_name2(self, selection):
+		line = self.view.line(selection)
+		open = self.view.find('\"', line.begin())
+		close = self.view.find('\"', open.begin()+1)
+		return self.view.substr(sublime.Region(open.begin()+1,close.end()-1))
+
 	def _is_recipe(self, selection):
 		line = self.view.line(selection)
 		return line.contains(self.view.find("recipe", line.begin()))
+
+	def _is_included_recipe(self, selection):
+		line = self.view.line(selection)
+		return line.contains(self.view.find("include_recipe", line.begin()))
 		
 	def _is_role(self, selection):
 		line = self.view.line(selection)
