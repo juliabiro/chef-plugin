@@ -3,14 +3,19 @@ import sublime, sublime_plugin
 class FindRecipeCommand(sublime_plugin.TextCommand):
 	_cookbooks_path="/Users/juliabiro/.prezi/prezi-chef/cookbooks/"
 	_roles_path="/Users/juliabiro/.prezi/prezi-chef/roles/"
-	
+
 	def run(self, edit):
+		def done(filename):
+			self.view.window().open_file(filename, sublime.ENCODED_POSITION)
+
 		sels=self.view.sel()
 		for s in sels:
 			if self._is_recipe(s):
-				print self._find_recipe_path(self._get_full_recipe_name(s))
+				filename = self._find_recipe_path(self._get_full_recipe_name(s))
 			elif self._is_role(s):
-				print self._find_role_path(self._get_full_recipe_name(s))
+				filename = self._find_role_path(self._get_full_recipe_name(s))
+		
+		self.view.window().show_input_panel("file to open: ", filename, done, None, None)
 
 	def _get_full_recipe_name(self, selection):
 		line = self.view.line(selection)
@@ -38,3 +43,6 @@ class FindRecipeCommand(sublime_plugin.TextCommand):
 	def _find_role_path(self,role_name):
 		return self._roles_path+role_name+".json"
 
+"""
+recipe "[users]"
+"""
