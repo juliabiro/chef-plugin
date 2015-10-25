@@ -21,8 +21,6 @@ class FindRecipeCommand(sublime_plugin.TextCommand):
 	def get_recipe_path_from_line(self, line):
 		filename=None
 
-		
-
 		def _does_contain_keyword(view, line, keyword):
 			return view.find(keyword, line.begin()) and line.contains(view.find(keyword, line.begin()))
 	
@@ -36,8 +34,12 @@ class FindRecipeCommand(sublime_plugin.TextCommand):
 				return cookbooks_path+recipe_name[:delim]+"/recipes/"+recipe_name[delim+2:]+".rb"
 
 		def _make_role_path(roles_path,role_name):
-			return roles_path+role_name+".json"
+			return roles_path+"/"+role_name+".json"
 
+		def _get_recipe_name(view, line, delim1='\[', delim2='\]'):
+			open = view.find(delim1, line.begin())
+			close = view.find(delim2, open.begin()+1)
+			return view.substr(sublime.Region(open.begin()+1,close.end()-1))
 
 		if _does_contain_keyword(self.view, line, "recipe"):
 				if _does_contain_keyword(self.view, line, "include_recipe"):
@@ -83,12 +85,6 @@ class FindRecipeCommand(sublime_plugin.TextCommand):
 			return (self._cookbooks_path and self._roles_path)
 
 		return (self._cookbooks_path and self._roles_path) or update_chef_root()
-
-
-	def _get_recipe_name(view, line, delim1='\[', delim2='\]'):
-			open = view.find(delim1, line.begin())
-			close = view.find(delim2, open.begin()+1)
-			return view.substr(sublime.Region(open.begin()+1,close.end()-1))
 
 
 class BuildRecipeTree(FindRecipeCommand):
