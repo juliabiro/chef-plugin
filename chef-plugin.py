@@ -11,51 +11,54 @@ class FindRecipeCommand(sublime_plugin.TextCommand):
 		sels=self.view.sel()
 		for s in sels:
 			filename=None
-			if self._is_recipe(s):
-				if self._is_included_recipe(s):
-					filename = self._find_recipe_path(self._get_recipe_name(s, delim1='\"', delim2='\"')) 
-					print (filename)
-				else:
-					filename = self._find_recipe_path(self._get_recipe_name(s))
-			elif self._is_role(s):
-				filename = self._find_role_path(self._get_recipe_name(s))
-		
+			line = self.view.line(s)
+			filename= self.get_recipe_path_from_line(line)
 			if filename:
 				self.view.window().open_file(filename, sublime.ENCODED_POSITION)
+
+			
+	
+	def get_recipe_path_from_line(self, line):
+		filename=None
+
+		def _get_recipe_name(view, line, delim1='\[', delim2='\]'):
+			open = view.find(delim1, line.begin())
+			close = view.find(delim2, open.begin()+1)
+			return view.substr(sublime.Region(open.begin()+1,close.end()-1))
+
+		def _does_contain_keyword(view, line, keyword):
+			return view.find(keyword, line.begin()) and line.contains(view.find(keyword, line.begin()))
+	
+		def _make_recipe_path(cookbooks_path, recipe_name):
+			# case 2: recipe name only
+			# case 1: cookbook name:: recipe name
+			delim = recipe_name.find("::")
+			if  delim == -1:
+				return cookbooks_path+recipe_name+"/recipes/default.rb"
+			else:
+				return cookbooks_path+recipe_name[:delim]+"/recipes/"+recipe_name[delim+2:]+".rb"
+
+		def _make_role_path(roles_path,role_name):
+			return roles_path+role_name+".json"
+
+
+		if _does_contain_keyword(self.view, line, "recipe"):
+				if _does_contain_keyword(self.view, line, "include_recipe"):
+					filename = _make_recipe_path(self._cookbooks_path, _get_recipe_name(self.view, line, delim1='\"', delim2='\"')) 
+				else:
+					filename = _make_recipe_path(self._cookbooks_path, _get_recipe_name(self.view, line))
+
+		elif _does_contain_keyword(self.view,line, "role"):
+				filename = _make_role_path(self._roles_path, _get_recipe_name(self.view, line))
 		
-	def _get_recipe_name(self, selection, delim1='\[', delim2='\]'):
-		line = self.view.line(selection)
-		open = self.view.find(delim1, line.begin())
-		close = self.view.find(delim2, open.begin()+1)
-		return self.view.substr(sublime.Region(open.begin()+1,close.end()-1))
+		return filename
 
-	def _is_recipe(self, selection):
-		line = self.view.line(selection)
-		return self.view.find("recipe", line.begin()) and line.contains(self.view.find("recipe", line.begin()))
 
-	def _is_included_recipe(self, selection):
-		line = self.view.line(selection)
-		return self.view.find("include_recipe", line.begin()) and line.contains(self.view.find("include_recipe", line.begin()))
-		
-	def _is_role(self, selection):
-		line = self.view.line(selection)
-		return self.view.find("role", line.begin()) and line.contains(self.view.find("role", line.begin()))
-		
-	def _find_recipe_path(self, recipe_name):
-		# case 2: recipe name only
-		# case 1: cookbook name:: recipe name
-		delim = recipe_name.find("::")
-		if  delim == -1:
-			return self._cookbooks_path+recipe_name+"/recipes/default.rb"
-		else:
-			return self._cookbooks_path+recipe_name[:delim]+"/recipes/"+recipe_name[delim+2:]+".rb"
 
-	def _find_role_path(self,role_name):
-		return self._roles_path+role_name+".json"
-
-	# make sure that we have a chef root somewhere. 
-	# if already set, check if we are on thhe path
-	# if not, make sure to find one 
+#########################################################
+# validate cookbook path and role path
+# return false if none can be found
+#########################################################
 	def _validate_chef_root(self):
 		import os
 		def update_chef_root():
@@ -84,7 +87,3 @@ class FindRecipeCommand(sublime_plugin.TextCommand):
 
 		return (self._cookbooks_path and self._roles_path) or update_chef_root()
 
-
-"""
-recipe "[users]"
-"""
