@@ -11,7 +11,7 @@ class FindRecipeCommand(sublime_plugin.TextCommand):
 		sels=self.view.sel()
 		for s in sels:
 			if self._is_recipe(s):
-				if self._is_included_recipe:
+				if self._is_included_recipe(s):
 					filename = self._find_recipe_path(self._get_full_recipe_name2(s)) 
 				else:
 					filename = self._find_recipe_path(self._get_full_recipe_name(s))
@@ -38,7 +38,7 @@ class FindRecipeCommand(sublime_plugin.TextCommand):
 
 	def _is_included_recipe(self, selection):
 		line = self.view.line(selection)
-		return line.contains(self.view.find("include_recipe", line.begin()))
+		return self.view.find("include_recipe", line.begin()) and line.contains(self.view.find("include_recipe", line.begin()))
 		
 	def _is_role(self, selection):
 		line = self.view.line(selection)
