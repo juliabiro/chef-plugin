@@ -120,11 +120,25 @@ class BuildRecipeTree(FindRecipeCommand):
 		print("attributes_tree: ", self._attributes_tree)
 
 
-	def find_attribute_use(self):
-		#1. get attribute name
-		# 2. go up to attribute group, make note of path
+		sels=self.view.sel()
+		for s in sels:
+			line = _get_attribute_name(self.view.line(s))
+			
+			def _get_attribute_name(line):
+				open = view.find('\"', line.begin())
+				close = view.find('\"', open.begin()+1)
+				return line[open+1:close]
+
+			self.find_attribute_use(_get_attribute_name(line))
+		
+
+	def find_attribute_use(self, attribute):
+		# 2. find attribute in tree, make note of path
 		# 3. find in recipes
+		# 4. return recipe path and location (hehe sounds easy)
 		pass
+		
+
 
 	def build_recipes_tree(self):
 		if self._recipes_tree!={} or not self._all_json.has_key("run_list"):
@@ -180,4 +194,7 @@ class BuildRecipeTree(FindRecipeCommand):
 					self._attributes_tree[key].update(self._all_json[key])
 				else:
 					self._attributes_tree[key]=(self._all_json[key])
+
+
+		
 # TODO: parse json for default attributes, override_attribtes, and for normal tag in nodes
