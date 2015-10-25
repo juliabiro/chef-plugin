@@ -5,9 +5,7 @@ class FindRecipeCommand(sublime_plugin.TextCommand):
 	_roles_path="/Users/juliabiro/.prezi/prezi-chef/roles/"
 
 	def run(self, edit):
-		def done(filename):
-			self.view.window().open_file(filename, sublime.ENCODED_POSITION)
-
+		
 		sels=self.view.sel()
 		for s in sels:
 			if self._is_recipe(s):
@@ -18,8 +16,8 @@ class FindRecipeCommand(sublime_plugin.TextCommand):
 			elif self._is_role(s):
 				filename = self._find_role_path(self._get_full_recipe_name(s))
 		
-		self.view.window().show_input_panel("file to open: ", filename, done, None, None)
-
+		self.view.window().open_file(filename, sublime.ENCODED_POSITION)
+		
 	def _get_full_recipe_name(self, selection):
 		line = self.view.line(selection)
 		open = self.view.find('\[', line.begin())
