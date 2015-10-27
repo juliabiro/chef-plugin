@@ -1,83 +1,71 @@
 import sublime
 import sublime_plugin
+import os
+
+def get_chef_root(path):
+    """Return the root chef directory for the current file, or None if it can't be found.
+
+    Assumption: the chef root is called prezi-chef.
+    Backup, just in case someone cloned the repo to a different name: the chef root has a dir called cookbooks in it.
+    """
+    if "prezi-chef" in path:
+        return path[:path.index("prezi-chef")] + "prezi-chef/"
+    else:
+        while "/" in path:
+            path = path[:path.rfind("/")]
+            if os.path.isdir(path + "/cookbooks"):
+                return path
+    raise Exception
 
 
-class FindRecipeCommand(sublime_plugin.TextCommand):
-    _cookbooks_path = None
-    _roles_path = None
+class JumpToTargetCommand(sublime_plugin.TextCommand):
+    """Pick recipe or role name from chef statements and open the appropriate file."""
+    chef_root = None
 
     def run(self, edit):
-        if not self._validate_chef_root():
-            return
-
+        if self.chef_root is None:
+            try:
+                self.chef_root = get_chef_root(self.view.file_name())
+            except:
+                sublime.error_message("Can't find chef root!")
+                return
         sels = self.view.sel()
         for s in sels:
             line = self.view.line(s)
-            filename = self.get_recipe_path_from_line(line)
+            filename = self.get_target_path_from_line(line)
             if filename:
                 self.view.window().open_file(filename, sublime.ENCODED_POSITION)
 
-    def get_recipe_path_from_line(self, line):
-        filename = None
 
+    def get_target_path_from_line(self, line):
         def _does_contain_keyword(view, line, keyword):
             return view.find(keyword, line.begin()) and line.contains(view.find(keyword, line.begin()))
 
-        def _make_recipe_path(cookbooks_path, recipe_name):
-            # case 2: recipe name only
-            # case 1: cookbook name:: recipe name
+        def _make_recipe_path(recipe_name):
+            # if delimeter (::) and recipe name is omitted, it should resolve to ::default
             delim = recipe_name.find("::")
             if delim == -1:
-                return cookbooks_path + recipe_name + "/recipes/default.rb"
+                return self.chef_root + "cookbooks/" + recipe_name + "/recipes/default.rb"
             else:
-                return cookbooks_path + recipe_name[:delim] + "/recipes/" + recipe_name[delim + 2:] + ".rb"
+                return self.chef_root + "cookbooks/" + recipe_name[:delim] + "/recipes/" + recipe_name[delim + 2:] + ".rb"
 
-        def _make_role_path(roles_path, role_name):
-            return roles_path + "/" + role_name + ".json"
+        def _make_role_path(role_name):
+            return self.chef_root + "roles/" + role_name + ".json"
 
-        def _get_recipe_name(view, line, delim1='\[', delim2='\]'):
+        def _get_target_name(view, line, delim1='\[', delim2='\]'):
             opening = view.find(delim1, line.begin())
             closing = view.find(delim2, opening.begin() + 1)
             return view.substr(sublime.Region(opening.begin() + 1, closing.end() - 1))
 
-        if _does_contain_keyword(self.view, line, "recipe"):
-            if _does_contain_keyword(self.view, line, "include_recipe"):
-                filename = _make_recipe_path(self._cookbooks_path, _get_recipe_name(self.view, line, delim1='\"', delim2='\"'))
-            else:
-                filename = _make_recipe_path(self._cookbooks_path, _get_recipe_name(self.view, line))
-
+        filename = None
+        if _does_contain_keyword(self.view, line, "include_recipe"):
+            filename = _make_recipe_path(_get_target_name(self.view, line, delim1='\"', delim2='\"'))
+        elif _does_contain_keyword(self.view, line, "recipe"):
+            filename = _make_recipe_path(_get_target_name(self.view, line))
         elif _does_contain_keyword(self.view, line, "role"):
-                filename = _make_role_path(self._roles_path, _get_recipe_name(self.view, line))
+            filename = _make_role_path(_get_target_name(self.view, line))
 
         return filename
-
-    def _validate_chef_root(self):
-        """Validate cookbook path and role path, return false if none can be found"""
-        import os
-
-        def update_chef_root():
-            def find_cookbook_dir():
-                cbp = None
-                current_dir = os.path.dirname(os.path.realpath(self.view.file_name()))
-
-                i = 100
-                while i > 0 and not cbp and os.path.dirname(current_dir) != current_dir:
-                    for dirs in os.listdir(current_dir):
-                        if dirs.endswith("cookbooks"):
-                            cbp = os.path.join(current_dir, dirs + "/")
-                            break
-                    current_dir = os.path.realpath(os.path.join(current_dir, os.pardir))
-                    i = i - 1
-                return cbp
-
-            self._cookbooks_path = find_cookbook_dir()
-
-            if self._cookbooks_path is not None:
-                self._roles_path = os.path.realpath(os.path.join(self._cookbooks_path, "../roles/"))
-
-            return (self._cookbooks_path and self._roles_path)
-
-        return (self._cookbooks_path and self._roles_path) or update_chef_root()
 
 
 class BuildRecipeTree(FindRecipeCommand):
