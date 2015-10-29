@@ -70,6 +70,7 @@ class JumpToTargetCommand(sublime_plugin.TextCommand):
 
 
 class ExpandRunlistCommand(sublime_plugin.TextCommand):
+    """List all recipes that the given role file invokes; walk included roles recursively."""
     chef_root = None
 
     def run(self, edit):
@@ -92,6 +93,10 @@ class ExpandRunlistCommand(sublime_plugin.TextCommand):
             sublime.error_message(str(e))
 
     def expand_runlist(self, file_contents, indent_level):
+        """Given the contents of a file as a python dict, print the expanded runlist.
+
+        Assumes that every file is valid - otherwise exceptions will be thrown, so catch them.
+        """
         runlist = file_contents['run_list']
         for item in runlist:
             if item.startswith('role'):
