@@ -1,8 +1,8 @@
 [
-    { 
-        "keys": ["ctrl+alt+r"], "command": "find_recipe"
+    {
+        "keys": ["ctrl+alt+r"], "command": "jump_to_target"
     },
-    { 
-        "keys": ["ctrl+alt+b"], "command": "build_recipe_tree"
+    {
+        "keys": ["ctrl+alt+b"], "command": "expand_runlist"
     }
 ]
