@@ -3,8 +3,6 @@ import sublime_plugin
 import os
 import json
 
-chef_root = None
-
 
 def get_chef_root(path):
     """Return the root chef directory for the current file, or None if it can't be found.
@@ -65,7 +63,7 @@ class JumpToResourceCommand(sublime_plugin.TextCommand):
 
 
 class ExpandRunlistCommand(sublime_plugin.TextCommand):
-    """List all recipes that the given role file invokes; walk included roles recursively."""
+    """List all recipes that the given role file invokes; walk included roles and recipes recursively."""
     chef_root = None
 
     def run(self, edit):
@@ -83,22 +81,44 @@ class ExpandRunlistCommand(sublime_plugin.TextCommand):
             return
 
         try:
-            self.expand_runlist(self.body, 0)
+            self.results = self.view.window().new_file()
+            self.results.insert(edit, 0, self.expand("ROLE", self.body, 0))
         except Exception as e:
             sublime.error_message(str(e))
 
-    def expand_runlist(self, file_contents, indent_level):
-        """Given the contents of a file as a python dict, print the expanded runlist.
+    def expand(self, file_type, file_contents, indent_level):
+        """Given the contents of a file as either a dict (role) or string (recipe), print the expanded runlist.
 
         Assumes that every file is valid - otherwise exceptions will be thrown, so catch them.
         """
-        runlist = file_contents['run_list']
-        for item in runlist:
-            if item.startswith('role'):
-                role_name = item[5:-1]
-                print 4 * indent_level * " " + item + " ==>"
-                role_file = open(self.chef_root + "roles/" + role_name + ".json")
-                role_file_contents = json.loads(role_file.read())
-                self.expand_runlist(role_file_contents, indent_level + 1)
+
+        result = ""
+        if file_type == "ROLE":
+            runlist = file_contents['run_list']
+            for item in runlist:
+                result += 4 * indent_level * " " + item + "\n"
+                if item.startswith('role'):
+                    role_name = item[5:-1]
+                    role_file = open(self.chef_root + "roles/" + role_name + ".json")
+                    role_file_contents = json.loads(role_file.read())
+                    role_file.close()
+                    result += self.expand("ROLE", role_file_contents, indent_level + 1)
             else:
-                print indent_level * " " + item
+                recipe_file = open(get_resource_path(self.chef_root, item))
+                recipe_file_contents = recipe_file.readlines()
+                recipe_file.close()
+                result += self.expand("RECIPE", recipe_file_contents, indent_level + 1)
+        else:
+            for line in file_contents:
+                if "include_recipe" in line:
+                    # so much for DRY
+                    quotes = line[line.index("include_recipe") + 15]     # can be either " or '
+                    start = line.index("include_recipe") + 16
+                    end = line.find(quotes, line.index("include_recipe") + 16)
+                    result += 4 * indent_level * " " + "recipe[" + line[start:end] + "]\n"
+                    recipe_file = open(get_resource_path(self.chef_root, line))
+                    recipe_file_contents = recipe_file.readlines()
+                    recipe_file.close()
+                    result += self.expand("RECIPE", recipe_file_contents, indent_level + 1)
+        return result
+
