@@ -4,19 +4,22 @@ import os
 import json
 
 
-def get_chef_root(path):
+def set_chef_root(path):
     """Return the root chef directory for the current file, or None if it can't be found.
 
     Assumption: the chef root is called prezi-chef. Also: UNIX file system.
     Backup, just in case someone cloned the repo to a different name: the chef root has a dir called cookbooks in it.
     """
+    settings = sublime.load_settings('Chef-Plugin.sublime-settings')
     if "prezi-chef" in path:
-        return path[:path.index("prezi-chef")] + "prezi-chef/"
+         settings.set('chef_root', path[:path.index("prezi-chef")] + "prezi-chef/")
+         return
     else:
         while "/" in path:
             path = path[:path.rfind("/")]
             if os.path.isdir(path + "/cookbooks"):
-                return path
+                settings.set('chef_root', path)
+                return
     raise Exception
 
 
@@ -45,15 +48,15 @@ def get_resource_path(chef_root, resource):
 
 class JumpToResourceCommand(sublime_plugin.TextCommand):
     """Pick recipe or role name from chef statements and open the appropriate file."""
-    chef_root = None
-
     def run(self, edit):
-        if self.chef_root is None:
+        settings = sublime.load_settings('Chef-Plugin.sublime-settings')
+        if settings.get("chef_root", None) is None:
             try:
-                self.chef_root = get_chef_root(self.view.file_name())
+                set_chef_root(self.view.file_name())
             except:
                 sublime.error_message("Can't find chef root!")
                 return
+        self.chef_root = settings.get("chef_root")
         sels = self.view.sel()
         for s in sels:
             line = self.view.line(s)
@@ -64,15 +67,15 @@ class JumpToResourceCommand(sublime_plugin.TextCommand):
 
 class ExpandRunlistCommand(sublime_plugin.TextCommand):
     """List all recipes that the given role file invokes; walk included roles and recipes recursively."""
-    chef_root = None
-
     def run(self, edit):
-        if self.chef_root is None:
+        settings = sublime.load_settings('Chef-Plugin.sublime-settings')
+        if settings.get("chef_root", None) is None:
             try:
-                self.chef_root = get_chef_root(self.view.file_name())
+                set_chef_root(self.view.file_name())
             except:
                 sublime.error_message("Can't find chef root!")
                 return
+        self.chef_root = settings.get("chef_root")
 
         try:
             self.body = json.loads(self.view.substr(sublime.Region(0, self.view.size())))
