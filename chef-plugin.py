@@ -103,11 +103,11 @@ class ExpandRunlistCommand(sublime_plugin.TextCommand):
                     role_file_contents = json.loads(role_file.read())
                     role_file.close()
                     result += self.expand("ROLE", role_file_contents, indent_level + 1)
-            else:
-                recipe_file = open(get_resource_path(self.chef_root, item))
-                recipe_file_contents = recipe_file.readlines()
-                recipe_file.close()
-                result += self.expand("RECIPE", recipe_file_contents, indent_level + 1)
+                else:
+                    recipe_file = open(get_resource_path(self.chef_root, item))
+                    recipe_file_contents = recipe_file.readlines()
+                    recipe_file.close()
+                    result += self.expand("RECIPE", recipe_file_contents, indent_level + 1)
         else:
             for line in file_contents:
                 if "include_recipe" in line:
