@@ -1,6 +1,6 @@
 [
     {
-        "keys": ["ctrl+alt+r"], "command": "jump_to_target"
+        "keys": ["ctrl+alt+r"], "command": "jump_to_resource"
     },
     {
         "keys": ["ctrl+alt+b"], "command": "expand_runlist"
