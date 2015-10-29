@@ -3,10 +3,13 @@ import sublime_plugin
 import os
 import json
 
+chef_root = None
+
+
 def get_chef_root(path):
     """Return the root chef directory for the current file, or None if it can't be found.
 
-    Assumption: the chef root is called prezi-chef.
+    Assumption: the chef root is called prezi-chef. Also: UNIX file system.
     Backup, just in case someone cloned the repo to a different name: the chef root has a dir called cookbooks in it.
     """
     if "prezi-chef" in path:
@@ -19,7 +22,30 @@ def get_chef_root(path):
     raise Exception
 
 
-class JumpToTargetCommand(sublime_plugin.TextCommand):
+def get_resource_path(chef_root, resource):
+    """Return the absolute path for a recipe or role name."""
+    if "recipe" in resource:
+        if "include_recipe" in resource:
+            quotes = resource[resource.index("include_recipe") + 15]     # can be either " or '
+            start = resource.index("include_recipe") + 16
+            end = resource.find(quotes, resource.index("include_recipe") + 16)
+        else:
+            start = resource.index("recipe[") + 7
+            end = resource.find("]", resource.index("recipe[") + 7)
+        recipe_name = resource[start:end]
+        if "::" in recipe_name:
+            delimiter = recipe_name.index("::")
+            return chef_root + "cookbooks/" + recipe_name[:delimiter] + "/recipes/" + recipe_name[delimiter + 2:] + ".rb"
+        else:
+            return chef_root + "cookbooks/" + recipe_name + "/recipes/default.rb"
+    else:
+        start = resource.index("role[") + 5
+        end = resource.find("]", resource.index("role[") + 5)
+        role_name = resource[start:end]
+        return chef_root + "roles/" + role_name + ".json"
+
+
+class JumpToResourceCommand(sublime_plugin.TextCommand):
     """Pick recipe or role name from chef statements and open the appropriate file."""
     chef_root = None
 
@@ -33,40 +59,9 @@ class JumpToTargetCommand(sublime_plugin.TextCommand):
         sels = self.view.sel()
         for s in sels:
             line = self.view.line(s)
-            filename = self.get_target_path_from_line(line)
+            filename = get_resource_path(self.chef_root, self.view.substr(line))
             if filename:
                 self.view.window().open_file(filename, sublime.ENCODED_POSITION)
-
-
-    def get_target_path_from_line(self, line):
-        def does_contain_keyword(view, line, keyword):
-            return view.find(keyword, line.begin()) and line.contains(view.find(keyword, line.begin()))
-
-        def make_recipe_path(recipe_name):
-            # if delimeter (::) and recipe name is omitted, it should resolve to ::default
-            delim = recipe_name.find("::")
-            if delim == -1:
-                return self.chef_root + "cookbooks/" + recipe_name + "/recipes/default.rb"
-            else:
-                return self.chef_root + "cookbooks/" + recipe_name[:delim] + "/recipes/" + recipe_name[delim + 2:] + ".rb"
-
-        def make_role_path(role_name):
-            return self.chef_root + "roles/" + role_name + ".json"
-
-        def get_target_name(view, line, delim1='\[', delim2='\]'):
-            opening = view.find(delim1, line.begin())
-            closing = view.find(delim2, opening.begin() + 1)
-            return view.substr(sublime.Region(opening.begin() + 1, closing.end() - 1))
-
-        filename = None
-        if does_contain_keyword(self.view, line, "include_recipe"):
-            filename = make_recipe_path(get_target_name(self.view, line, delim1='\"', delim2='\"'))
-        elif does_contain_keyword(self.view, line, "recipe"):
-            filename = make_recipe_path(get_target_name(self.view, line))
-        elif does_contain_keyword(self.view, line, "role"):
-            filename = make_role_path(get_target_name(self.view, line))
-
-        return filename
 
 
 class ExpandRunlistCommand(sublime_plugin.TextCommand):
@@ -101,9 +96,9 @@ class ExpandRunlistCommand(sublime_plugin.TextCommand):
         for item in runlist:
             if item.startswith('role'):
                 role_name = item[5:-1]
-                print 4 * indent_level * " " +  item + " ==>"
+                print 4 * indent_level * " " + item + " ==>"
                 role_file = open(self.chef_root + "roles/" + role_name + ".json")
                 role_file_contents = json.loads(role_file.read())
                 self.expand_runlist(role_file_contents, indent_level + 1)
             else:
-                print indent_level * " " +  item
+                print indent_level * " " + item
