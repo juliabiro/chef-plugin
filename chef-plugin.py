@@ -5,7 +5,7 @@ import json
 
 
 def set_chef_root(path):
-    """Return the root chef directory for the current file, or None if it can't be found.
+    """Locate the root chef directory and save it as a setting.
 
     Assumption: the chef root is called prezi-chef. Also: UNIX file system.
     Backup, just in case someone cloned the repo to a different name: the chef root has a dir called cookbooks in it.
@@ -125,3 +125,76 @@ class ExpandRunlistCommand(sublime_plugin.TextCommand):
                     result += self.expand("RECIPE", recipe_file_contents, indent_level + 1)
         return result
 
+
+class FindAttributeUsagesCommand(ExpandRunlistCommand):
+    """Find the recipes that access the attribute under the cursor."""
+
+    def run(self, edit):
+        settings = sublime.load_settings('Chef-Plugin.sublime-settings')
+        if settings.get("chef_root", None) is None:
+            try:
+                set_chef_root(self.view.file_name())
+            except:
+                sublime.error_message("Can't find chef root!")
+                return
+        self.chef_root = settings.get("chef_root")
+
+        try:
+            self.body_string = self.view.substr(sublime.Region(0, self.view.size()))
+            self.body_dict = json.loads(self.body_string)
+            self.body_list = self.body_string.split("\n")
+        except:
+            sublime.error_message("Not a json file!")
+            return
+
+        self.expanded = self.expand("ROLE", self.body_dict, 0)
+
+        sels = self.view.sel()
+        for s in sels:
+            attribute = []
+            line_index = self.view.rowcol(s.begin())[0]
+            indent_level = len(self.body_list[line_index])
+            while line_index > 0:
+                line = self.body_list[line_index]
+                if '"' in line and ":" in line:
+                    if line.index('"') < indent_level:
+                        indent_level = line.index('"')
+                        keyword = line[line.index('"') + 1:line.index('"', line.index('"') + 1)]
+                        attribute += [keyword]
+                line_index -= 1
+            if keyword not in ["normal", "default_attributes", "override_attributes"]:
+                continue
+            attribute_string = "node" + "".join(["['" + k + "']" for k in reversed(attribute[:-1])])
+
+            ## go through all recipes in the expanded list and somehow grep for the attribute
+            match_count = file_count = 0
+            results = "Searching " + str(self.expanded.count('\n') + 1) + " files for \"" + attribute_string + "\"\n"
+            for item in self.expanded.split("\n"):
+                if item.strip().startswith("recipe"):
+                    # print item.strip()
+                    file_path = get_resource_path(self.chef_root, item)
+                    f = open(file_path)
+                    file_contents = f.read()
+                    f.close()
+                    if attribute_string in file_contents:
+                        file_count += 1
+                        first_flag = True
+                        results += "\n" + item.strip() + "\n" + file_path + ":\n"
+                        file_list = file_contents.split('\n')
+                        for (i, line) in enumerate(file_list):
+                            if attribute_string in line:
+                                match_count += 1
+                                if first_flag:
+                                    first_flag = False
+                                else:
+                                    results += "    ..\n"
+                                results += "\n".join([str(k).rjust(5) + (": " if k == i else "  ") + file_list[k] for k in range(i - 2, i + 3)]) + "\n"
+            results += "\n" + str(match_count) + " match" + ("es" if match_count > 1 else "")
+            results += " in " + str(file_count) + " file" + ("s" if file_count > 1 else "") + "\n\n\n"
+            try:
+                self.results = self.view.window().new_file()
+                self.results.set_name('Attribute search results')
+                self.results.set_syntax_file('Packages/Default/Find Results.hidden-tmLanguage')
+                self.results.insert(edit, 0, results)
+            except Exception as e:
+                sublime.error_message(str(e))
