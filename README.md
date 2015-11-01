@@ -1,16 +1,18 @@
 # Chef plugin
 
-Plugin for navigating big chef repos. 
+Plugin for navigating big chef repos.
+This project is a beta version, please test and give feedback.
 
 ## Features
-Opens recipe and role files on the *crtl+alt+r*. Just put the cursor on the line with the recipe or role name (eg. in a node or a role file or even in a recipe).
-finds your chef root automatically
+* Open the recipe or role mentioned in the current line (default: Cmd + Alt + j)
+* Expand runlist of currently opened role or node file (default: Cmd + Alt + k)
+* Find usages of an attribute defined in the current line by expanding the runlist of the currently opened role or node file and searching through occurrences (default: Cmd + Alt + l)
+
+You can modify the key bindings by editing the appropriate .sublime-keymap file in the repo.
 
 ## Installation
-Not released yet for package managers, you can use the sublime-package file. 
+`cd ~/Library/Application\ Support/Sublime\ Text\ 2/Packages` (assuming that is where your Sublime installation is)
+`git clone git@github.com:juliabiro/chef-plugin`
+`git checkout cleanup`
 
-##  Planned features
-- list nodes running that recipe
-- go to recipe where parameter is used
-- go to function definition
-
+You might have to restart Sublime.

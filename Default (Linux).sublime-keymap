@@ -1,8 +1,11 @@
 [
     {
-        "keys": ["ctrl+alt+r"], "command": "jump_to_resource"
+        "keys": ["ctrl+alt+j"], "command": "jump_to_resource"
     },
     {
-        "keys": ["ctrl+alt+b"], "command": "expand_runlist"
+        "keys": ["ctrl+alt+k"], "command": "expand_runlist"
+    },
+    {
+        "keys": ["ctrl+alt+l"], "command": "find_attribute_usages"
     }
 ]

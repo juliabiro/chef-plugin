@@ -12,8 +12,8 @@ def set_chef_root(path):
     """
     settings = sublime.load_settings('Chef-Plugin.sublime-settings')
     if "prezi-chef" in path:
-         settings.set('chef_root', path[:path.index("prezi-chef")] + "prezi-chef/")
-         return
+        settings.set('chef_root', path[:path.index("prezi-chef")] + "prezi-chef/")
+        return
     else:
         while "/" in path:
             path = path[:path.rfind("/")]
@@ -166,12 +166,11 @@ class FindAttributeUsagesCommand(ExpandRunlistCommand):
                 continue
             attribute_string = "node" + "".join(["['" + k + "']" for k in reversed(attribute[:-1])])
 
-            ## go through all recipes in the expanded list and somehow grep for the attribute
+            # go through all recipes in the expanded list and somehow grep for the attribute
             match_count = file_count = 0
             results = "Searching " + str(self.expanded.count('\n') + 1) + " files for \"" + attribute_string + "\"\n"
             for item in self.expanded.split("\n"):
                 if item.strip().startswith("recipe"):
-                    # print item.strip()
                     file_path = get_resource_path(self.chef_root, item)
                     f = open(file_path)
                     file_contents = f.read()
